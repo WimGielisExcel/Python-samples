@@ -8,7 +8,7 @@ def count_public_views_and_subsets():
     # Purpose:
     # - list the number of public cube views and dimension subsets
     # - for clean up purposes, of objects lurking around in the TM1 data directory
-    # - 
+    # - there is a similar coding in Turbo Integrator available at GitHub. All in all, I prefer the solution in TI.
     ####################################################
 
     # =============================================================================================================
@@ -22,7 +22,7 @@ def count_public_views_and_subsets():
     PORT = 8001
     SSL = False
 
-    output_filename = 'D:\\count public views and subsets.txt'
+    RESULT_FILE = r'D:\count public views and subsets.txt'
 
     # list a cube or dimension only if the count of views, dimensions, resp. exceeds the threshold
     threshold_views = 8
@@ -32,21 +32,20 @@ def count_public_views_and_subsets():
     # END of parameters and settings
     # =============================================================================================================
 
-    filehandle = open(f'{output_filename}', 'w')
-    logline = []
+    log_lines = []
     public_views = {}
     public_subsets = {}
 
     tm1 = TM1Service(address=ADDRESS, port=PORT, user=USER, password=PWD, namespace='', gateway='', ssl=SSL)
 
-    # Iterate through cubes and dimensions to count the public views, subsets,n resp.
+    # iterate through cubes and dimensions to count the public views, subsets, resp.
     cube_names = tm1.cubes.get_all_names()
     for cube_name in cube_names:
         private_view_names, public_views_names = tm1.cubes.views.get_all_names(cube_name=cube_name)
         public_views[cube_name] = len(public_views_names)
 
-    # remove dictionary items if the count does not exceed the threshold
-    # and sorting the dictionary
+    # - remove dictionary items if the count does not exceed the threshold
+    # - sort the dictionary
     if public_views:
         public_views = dict(filter(lambda elem: elem[1] >= threshold_views, public_views.items()))
     if public_views:
@@ -56,6 +55,7 @@ def count_public_views_and_subsets():
     dimension_names = tm1.dimensions.get_all_names()
     for dimension_name in dimension_names:
         subsets = tm1.dimensions.subsets.get_all_names(dimension_name=dimension_name, hierarchy_name=dimension_name, private=False)
+        # increment instead of write, because PAW alternate hierarchies will be counted with the main (container) dimension
         if dimension_name in public_subsets:
             public_subsets[dimension_name] += len(subsets)
         else:
@@ -67,18 +67,19 @@ def count_public_views_and_subsets():
         public_subsets = sorted(public_subsets.items(), key=lambda x: x[1], reverse=True)
 
     # output to a text file
-    logline.append("Public cube views: (at least " + str(threshold_views) + ")")
-    logline.append("-"*35 + "\n")
+    log_lines.append("Public cube views: (at least " + str(threshold_views) + ")")
+    log_lines.append("-" * 35 + "\n")
     for k, value in public_views:
-        logline.append("\t{}\t\t{}".format(value, k))
+        log_lines.append("\t{}\t\t{}".format(value, k))
 
-    logline.append("\n\nPublic dimension subsets: (at least " + str(threshold_subsets) + ")")
-    logline.append("-"*35 + "\n")
+    log_lines.append("\n\nPublic dimension subsets: (at least " + str(threshold_subsets) + ")")
+    log_lines.append("-" * 35 + "\n")
     for k, value in public_subsets:
-        logline.append("\t{}\t\t{}".format(value, k))
+        log_lines.append("\t{}\t\t{}".format(value, k))
 
-    filehandle.write("\n".join(logline))
-    filehandle.close()
-    return
+    with open(RESULT_FILE, 'w', encoding='utf-8') as file:
+        file.write("\n".join(log_lines))
+        file.close()
 
-count_public_views_and_subsets()
+if __name__ == "__main__":
+    count_public_views_and_subsets()
